@@ -115,9 +115,6 @@
     line: 'Defaults        env_reset, timestamp_timeout=240'
     validate: '/usr/sbin/visudo -cf %s'
 
-# To Do.
-# Add GRA_LocalAdminRights_LinuxHosts group to adm group. This will allow member to access and read logfiles.
-
 # Update /etc/ssh/sshd_config configuration file. Specifically:
 # 1. Configure SSH to grab the user's public key via AD.
 # 2. When grabbing the user's public key, do so as the nobody user.
