@@ -1,0 +1,7 @@
+---
+# vars file for ansible_domainjoin
+
+join_account: service_account
+join_account_password: password
+domain: AD.INUNDATION.CA
+computer_ou: OU=Servers,DC=ad,DC=inundation,DC=ca

@@ -1,0 +1,138 @@
+---
+# tasks file for ansible_domainjoin
+
+# Install required packages.
+
+- name: Install required packages.
+  ansible.builtin.apt:
+    name:
+      - realmd
+      - libnss-sss
+      - libpam-sss
+      - sssd
+      - sssd-tools
+      - adcli
+      - samba-common-bin
+      - oddjob
+      - oddjob-mkhomedir
+      - packagekit
+      - python3-pip
+    state: latest
+
+# Required Python module or Ansible throws an error.
+
+- name: Ensure pexpect is installed (Debian 11).
+  pip:
+    name: pexpect
+    state: present
+  when: 
+  - ansible_distribution == "Debian"
+  - ansible_distribution_major_version == "11"
+
+- name: Ensure pexpect is installed (Debian 12).
+  ansible.builtin.apt:
+    name:
+      - python3-pexpect
+  when:
+  - ansible_distribution == "Debian"
+  - ansible_distribution_major_version == "12"
+
+# Join the instance to the domain if not joined.
+
+- name: Determine domain status before join.
+  shell: realm list | grep {{ domain }}
+  register: domain_join_status
+  failed_when: domain_join_status.rc >= 2
+
+- name: Join domain
+  expect:
+    command: /bin/bash -c "/usr/sbin/realm join --user='{{ join_account }}' --computer-ou='{{ computer_ou }}' {{ domain }}"
+    responses:
+      Password for *: "{{ join_account_password }}"
+  when: domain_join_status.rc == 1
+
+- name: Determine domain status after join.
+  shell: realm list | grep {{ domain }}
+  register: domain_join_status
+  failed_when: domain_join_status.rc >= 2
+
+# Update /etc/sssd/sssd.conf configuration file. Specifically:
+# 1. Enable ssh logins via AD.
+# 2. Do not require FQDNs (username@domain.com) for the username.
+# 3. Update the fallback home directory to just be the username, not username@domain.com.
+
+- name: Update existing SSSD configuration file.
+  lineinfile:
+    backup: yes
+    state: present
+    path: /etc/sssd/sssd.conf
+    regexp: '^{{ item.search }}'
+    line: '{{ item.replace }}'
+  with_items:
+    - { search: 'services', replace: 'services = nss, pam, ssh'}
+    - { search: 'use_fully_qualified_names', replace: 'use_fully_qualified_names = False' }
+    - { search: 'fallback_homedir', replace: 'fallback_homedir = /home/%u'}
+  when: domain_join_status.rc == 0
+  notify: restart sssd
+
+# Configure the instance to query AD for the user's public key for SSH key logins.
+# Only allow users that are a member of the GRA_Logon_LinuxHost group access to the instance.
+
+- name: Add content to SSSD configuration file.
+  blockinfile:
+    backup: yes
+    path: /etc/sssd/sssd.conf
+    block: |
+      ldap_user_ssh_public_key = altSecurityIdentities
+      ad_access_filter = DOM:ad.inundation.ca:(memberOf:1.2.840.113556.1.4.1941:=CN=GRA_Logon,OU=Groups,DC=ad,DC=inundation,DC=ca)
+  when: domain_join_status.rc == 0
+  notify: restart sssd
+
+# Enable the automatic creation of home directories on first login. Disabled by default for Debian.
+
+- name: Update default mkhomedir file.
+  copy:
+    src: "{{ role_path }}/files/mkhomedir"
+    dest: /usr/share/pam-configs/mkhomedir
+
+- name: Enable automatic home directory creation
+  command: pam-auth-update --enable mkhomedir
+
+# Allow any member of the GRA_LocalAdminRights_LinuxHosts AD group to have sudoers rights.
+
+- name: Grant GRA_LocalAdminRights_LinuxHosts security group with sudo.
+  copy:
+    dest: "/etc/sudoers.d/domain_accounts"
+    content: "%GRA_LocalAdminRights_LinuxHosts ALL=(ALL) ALL"
+    mode: '0440'
+
+# Increase sudo timeout to four hours, validate on applying.
+- name: Increase sudo timeout to four hours.
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '^Defaults\s*env_reset$'
+    line: 'Defaults        env_reset, timestamp_timeout=240'
+    validate: '/usr/sbin/visudo -cf %s'
+
+# To Do.
+# Add GRA_LocalAdminRights_LinuxHosts group to adm group. This will allow member to access and read logfiles.
+
+# Update /etc/ssh/sshd_config configuration file. Specifically:
+# 1. Configure SSH to grab the user's public key via AD.
+# 2. When grabbing the user's public key, do so as the nobody user.
+
+- name: Configure SSH access via LDAP public keys.
+  lineinfile:
+    backup: yes
+    state: present
+    path: /etc/ssh/sshd_config
+    regexp: '^{{ item.search }}'
+    line: '{{ item.replace }}'
+  with_items:
+    - { search: '#AuthorizedKeysCommand none', replace: 'AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys'}
+    - { search: '#AuthorizedKeysCommandUser nobody', replace: 'AuthorizedKeysCommandUser nobody' }
+  notify: restart ssh
+  when: domain_join_status.rc == 0
+
+
