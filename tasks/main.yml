@@ -98,12 +98,12 @@
 - name: Enable automatic home directory creation
   command: pam-auth-update --enable mkhomedir
 
-# Allow any member of the GRA_LocalAdminRights_LinuxHosts AD group to have sudoers rights.
+# Allow any member of the 'ADSecurityGroup' security group to have sudoers rights.
 
-- name: Grant GRA_LocalAdminRights_LinuxHosts security group with sudo.
+- name: 'Configure sudo rights.'
   copy:
     dest: "/etc/sudoers.d/domain_accounts"
-    content: "%GRA_LocalAdminRights_LinuxHosts ALL=(ALL) ALL"
+    content: "%{{ admin_group }} ALL=(ALL) ALL"
     mode: '0440'
 
 # Increase sudo timeout to four hours, validate on applying.
