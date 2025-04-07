@@ -34,7 +34,7 @@ join_account: service_account
 join_account_password: password
 
 # Location where created computer objects for newly joined hosts will be placed.
-computer_ou: OU=Servers,DC=ad,DC=inundation,DC=ca
+computer_ou: OU=Servers,DC=ad,DC=twobyte,DC=blog
 
 # Active Directory security group with which members gain sudo rights over the host.
 admin_group: mygroup
