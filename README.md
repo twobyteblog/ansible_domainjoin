@@ -27,7 +27,7 @@ Within ```vars/main.yml``` provide the following variables:
 
 ```bash
 # Domain name.
-domain: AD.INUNDATION.CA
+domain: AD.TWOBYTE.BLOG
 
 # Active Directory service account with domain-join rights.
 join_account: service_account
