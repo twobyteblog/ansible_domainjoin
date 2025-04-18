@@ -1,29 +1,30 @@
-# Ansible Role: Domain Join
+## Ansible Role: Domain Join for Debian Hosts
 
 This Ansible role automates the process of joining a host to an Active Directory domain and configures centralized SSH authentication using the 'altSecurityIdentities' user attribute. The host is configured via the ```realm``` and ```sssd``` packages and joined using pre-provided domain credentials via a service account.
 
-This role will:
+## Actions Performed
 
-1. Install required packages on host.
-2. Join the host to the domain, the computer object will be created within the OU path specified by the ```computer_ou``` variable.
-3. Update ```sssd``` to allow ssh access via the 'altSecurityIdentities' user attribute.
-4. Ensure home directories are created automatically on login.
-5. Configure sudo rights to user accounts which are appart of the specified Active Directory security group.
+The role performs the following actions:
 
-# Requirements
+1. Installs required packages.
+2. Joins host to the domain via ```realm```.
+3. Updates ```sssd``` to allow ssh access via the ```altSecurityIdentities``` user attribute.
+4. Enables home directory creation.
+5. Configures sudo rights for Active Directory security group.
 
-This role requires root access to the host system. Specify it globally, or add it to your playbook (example below).
+## Setup Instructions
 
+### Clone Repository
+
+Clone the project into the roles directory of your Ansible Controller.
+
+```bash
+git clone https://github.com/twobyteblog/ansible_domainjoin.git
 ```
-- hosts: all
-  roles:
-    - role: ansible_domainjoin
-      become: yes
-```
 
-# Role Variables
+### Variables
 
-Within ```vars/main.yml``` provide the following variables:
+Within ```vars/main.yml``` fill in the following variables:
 
 ```bash
 # Domain name.
@@ -40,17 +41,13 @@ computer_ou: OU=Servers,DC=ad,DC=twobyte,DC=blog
 admin_group: mygroup
 ```
 
-For each user account that will have the ability to login to the host via SSH, enter the user's public key under the ```altSecurityIdentities``` user attribute.
+### Public Key
 
-# Installation
+For every user, copy the user's public key to the ```altSecurityIdentities``` user attribute under their user account within Active Directory.
 
-To use this role, clone it into the directory containing your other Ansible roles.
+### Playbook
 
-```
-git clone https://github.com/twobyteblog/ansible_domainjoin.git
-```
-
-Next, add it to a new or existing playbook.
+Create a playbook which runs this role. This role requires become privileges.
 
 ```
 - hosts: all
