@@ -1,6 +1,6 @@
 ## Ansible Role: Domain Join for Debian Hosts
 
-This Ansible role automates the process of joining a host to an Active Directory domain and configures centralized SSH authentication using the 'altSecurityIdentities' user attribute. The host is configured via the ```realm``` and ```sssd``` packages and joined using pre-provided domain credentials via a service account.
+This Ansible role automates the process of joining a host to an Active Directory domain and configures centralized SSH authentication using the ```altSecurityIdentities``` user attribute. The host is configured via the ```realm``` and ```sssd``` packages and joined using pre-provided domain credentials via a service account.
 
 ## Actions Performed
 
